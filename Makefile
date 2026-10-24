@@ -1,10 +1,13 @@
 CC ?= clang
+EMCC ?= emcc
 LANGUAGE ?= english
 VERSION ?= dev
 RELEASE_ROOT ?= releases
 PLATFORM ?= all
 BUILD_DIR := build
 TARGET := $(BUILD_DIR)/diceroll-demo
+WEB_BUILD_DIR := $(BUILD_DIR)/web
+WEB_TARGET := $(WEB_BUILD_DIR)/index.html
 
 CFLAGS := -std=c11 -O2 -Wall -Wextra $(shell sdl2-config --cflags)
 CFLAGS += -Icommon -Iwaveshare/include -Iwaveshare/vendor/waveshare/fonts
@@ -28,7 +31,30 @@ SOURCES := \
 	waveshare/vendor/waveshare/fonts/font20.c \
 	waveshare/vendor/waveshare/fonts/font24.c
 
-.PHONY: all simulator run stm wave release release-stm release-wave flash-stm flash-wave generate-wordlists test audit clean
+WEB_SOURCES := \
+	web/main.c \
+	web/platform.c \
+	common/bip39_lookup.c \
+	common/mnemonic_state.c \
+	common/sha256.c \
+	common/ui_model.c \
+	common/utf8.c \
+	waveshare/src/app/app.c \
+	waveshare/src/ui/graphics.c \
+	waveshare/src/ui/ui.c \
+	waveshare/vendor/waveshare/fonts/font12.c \
+	waveshare/vendor/waveshare/fonts/font16_unifont.c \
+	waveshare/vendor/waveshare/fonts/font16_compare.c \
+	waveshare/vendor/waveshare/fonts/font20.c \
+	waveshare/vendor/waveshare/fonts/font24.c
+
+WEB_CFLAGS := -std=c11 -O2 -Wall -Wextra
+WEB_CFLAGS += -Icommon -Iwaveshare/include -Iwaveshare/vendor/waveshare/fonts
+WEB_CFLAGS += -DDICEROLL_WORDLIST_FILE=\"wordlists/$(LANGUAGE).inc\"
+WEB_LDFLAGS := -sUSE_SDL=2 -sASYNCIFY -sENVIRONMENT=web -sFILESYSTEM=0
+WEB_LDFLAGS += --shell-file web/shell.html
+
+.PHONY: all simulator run web stm wave release release-stm release-wave flash-stm flash-wave generate-wordlists test audit clean
 
 all: $(TARGET)
 
@@ -40,6 +66,12 @@ $(TARGET): $(SOURCES)
 
 run: $(TARGET)
 	./$(TARGET)
+
+web: $(WEB_TARGET)
+
+$(WEB_TARGET): $(WEB_SOURCES) web/shell.html
+	@mkdir -p $(WEB_BUILD_DIR)
+	$(EMCC) $(WEB_CFLAGS) $(WEB_SOURCES) $(WEB_LDFLAGS) -o $(WEB_TARGET)
 
 generate-wordlists:
 	python3 tools/generate_wordlists.py
