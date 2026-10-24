@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Dice Roll BIP-39 Demonstration</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: #101010;
+    }
+    body {
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+    }
+    canvas {
+      display: block;
+      width: min(100%, 1200px);
+      height: auto;
+      aspect-ratio: 5 / 3;
+      background: #000;
+      image-rendering: pixelated;
+      touch-action: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="800" height="480" tabindex="0"
+          aria-label="Interactive Dice Roll BIP-39 simulator"></canvas>
+  <script>
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      printErr: function (text) { console.error(text); }
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

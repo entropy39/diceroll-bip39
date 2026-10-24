@@ -111,7 +111,7 @@ static void draw_word_cell( DicerollCanvas *canvas, const MnemonicState *state, 
                                separator, word_text );
         while( characters++ < 8U && offset < ( int )sizeof( label ) - 1 )
             label[ offset++ ] = ' ';
-        ( void )offset;
+        label[ offset ] = '\0';
         snprintf( list_number, sizeof( list_number ), "%u", index + 1U );
     }
     else if( word == current_word &&
