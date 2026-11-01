@@ -36,6 +36,34 @@ The seed phrase is stored in volatile memory and will be lost when powered down;
 
 ![Dice Roll running on the Waveshare board](docs/images/close.png)
 
+## Standard SeedQR (Waveshare, English)
+
+After all 12 or 24 words are complete, the English Waveshare build replaces the
+0/1 buttons with **SHOW QR**. Tap it to display a Standard SeedQR, then tap
+**BACK** to return to the completed phrase. Restart retains its existing
+hold protection on the word screen.
+
+The QR contains four zero-padded decimal digits per word, using **zero-based
+indices 0000–2047**, including the final checksum word. This differs from the
+human-readable list numbers 1–2048 displayed beside the words. The 48-digit
+(12-word) or 96-digit (24-word) payload uses numeric QR encoding with low error
+correction, a four-module white quiet zone, and integer pixel scaling.
+
+The QR is an unencrypted recovery phrase: scan only with your intended wallet.
+The feature is English-only because SeedQR does not identify a wordlist language;
+using another language with a scanner that assumes English can recover a different
+wallet. STM32 support is not included. The desktop and web simulators share the
+Waveshare interface and include the same English-only feature.
+
+QR generation stays offline in RAM. Payload and QR work buffers are cleared after
+drawing; returning to the words overwrites the QR pixels. No QR is saved to storage.
+
+Run `make -C waveshare test` for the mnemonic tests, all nine published
+[SeedSigner SeedQR vectors](https://github.com/SeedSigner/seedsigner/blob/dev/docs/seed_qr/README.md),
+and simulated 12/24-word touch flows. Before using this firmware for a real seed,
+verify scans of both lengths from the physical Waveshare display using disposable
+test phrases and the intended wallet. Host tests do not verify LCD optics or cameras.
+
 ## Independently verify the source code
 
 You can ask AI to audit the source code from the GitHub repository.  Go to the repository's GitHub release page https://github.com/dgnelsonoz/diceroll-bip39/releases.  Under **Assets** in the latest release, download either of the source code compressed files.  Upload it to your AI chatbot with the following prompt:

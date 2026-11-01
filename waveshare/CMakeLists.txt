@@ -21,6 +21,8 @@ add_library(bip39_core STATIC
     ../common/mnemonic_state.c
     ../common/sha256.c
     ../common/ui_model.c
+    ../common/seedqr.c
+    ../common/vendor/qrcodegen/qrcodegen.c
 )
 target_include_directories(bip39_core PUBLIC include ../common)
 
@@ -91,6 +93,9 @@ function(add_bip39_variant language target_name)
         waveshare_display waveshare_touch waveshare_psram pico_stdlib
         hardware_clocks)
     target_compile_definitions(${target_name} PRIVATE PICO_EMBED_XIP_SETUP=1)
+    if(language STREQUAL "english")
+        target_compile_definitions(${target_name} PRIVATE DICEROLL_ENABLE_SEEDQR=1)
+    endif()
     pico_enable_stdio_usb(${target_name} 0)
     pico_enable_stdio_uart(${target_name} 0)
     pico_add_extra_outputs(${target_name})

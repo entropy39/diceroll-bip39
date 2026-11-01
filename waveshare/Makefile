@@ -22,6 +22,21 @@ test:
 		../common/bip39_lookup.c ../common/mnemonic_state.c ../common/sha256.c ../common/utf8.c \
 		../tests/test_mnemonic_state.c -o /tmp/bip39_mnemonic_tests
 	/tmp/bip39_mnemonic_tests
+	$(CC) -std=c11 -Wall -Wextra -Werror -I../common \
+		../common/mnemonic_state.c ../common/sha256.c ../common/seedqr.c \
+		../common/vendor/qrcodegen/qrcodegen.c ../tests/test_seedqr.c -o /tmp/bip39_seedqr_tests
+	/tmp/bip39_seedqr_tests
+	$(CC) -std=c11 -Wall -Wextra -Werror -DDICEROLL_ENABLE_SEEDQR=1 \
+		-I../common -Iinclude -Ivendor/waveshare/fonts \
+		../tests/test_waveshare_seedqr_ui.c src/app/app.c src/ui/graphics.c src/ui/ui.c \
+		../common/bip39_lookup.c ../common/mnemonic_state.c ../common/sha256.c \
+		../common/seedqr.c ../common/vendor/qrcodegen/qrcodegen.c \
+		../common/ui_model.c ../common/utf8.c \
+		vendor/waveshare/fonts/font12.c vendor/waveshare/fonts/font16_unifont.c \
+		vendor/waveshare/fonts/font16_compare.c vendor/waveshare/fonts/font20.c \
+		vendor/waveshare/fonts/font24.c -o /tmp/bip39_seedqr_ui_tests
+	/tmp/bip39_seedqr_ui_tests 12
+	/tmp/bip39_seedqr_ui_tests 24
 
 audit: configure
 	$(MAKE) -C $(BUILD_DIR) $(addprefix bip39_waveshare_,$(filter-out english,$(LANGUAGES))) bip39_waveshare

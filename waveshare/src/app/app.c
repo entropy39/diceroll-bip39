@@ -7,6 +7,12 @@
 #include "ui_model.h"
 #include "utf8.h"
 #include "waveshare_platform.h"
+#include "seedqr.h"
+#include "vendor/qrcodegen/qrcodegen.h"
+
+#ifndef DICEROLL_ENABLE_SEEDQR
+#define DICEROLL_ENABLE_SEEDQR 0
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -227,6 +233,17 @@ static void draw_status( DicerollCanvas *canvas, const MnemonicState *state )
     }
 }
 
+static void draw_seedqr_button( DicerollCanvas *canvas, const MnemonicState *state )
+{
+    if( !DICEROLL_ENABLE_SEEDQR || !mnemonic_state_entropy_complete( state ) )
+        return;
+    graphics_fill_rect( canvas, 260, DICEROLL_BUTTON_TOP, 540,
+                        DICEROLL_BUTTON_HEIGHT, LIGHT_GREY );
+    graphics_fill_rect( canvas, 260, DICEROLL_BUTTON_TOP, 1,
+                        DICEROLL_BUTTON_HEIGHT, BLACK );
+    graphics_text24( canvas, 470, 390, "SHOW QR", BLACK, LIGHT_GREY );
+}
+
 static void update_state_regions( const MnemonicState *state, uint8_t previous_word, uint8_t previous_entered )
 {
     DicerollCanvas canvas = { framebuffer, LCD_WIDTH, LCD_HEIGHT };
@@ -241,6 +258,7 @@ static void update_state_regions( const MnemonicState *state, uint8_t previous_w
     {
         draw_word_cell( &canvas, state, mnemonic_state_get_word_count( state ) );
         draw_status( &canvas, state );
+        draw_seedqr_button( &canvas, state );
         return;
 
     }
@@ -420,6 +438,7 @@ static void draw_diceroll_screen( uint16_t *pixels, const MnemonicState *state )
                      DARK_GREY );
     graphics_text24( &canvas, 657, 406, "1", WHITE,
                      DARK_GREY );
+    draw_seedqr_button( &canvas, state );
 
 }
 
@@ -428,6 +447,77 @@ static void present( const MnemonicState *state )
     /* Diceroll uses a single continuously scanned framebuffer. Updating it in
        place avoids a full-frame double-buffer switch on every coin flip. */
     draw_diceroll_screen( framebuffer, state );
+}
+
+/* Require stable release when changing screens so the opening touch cannot
+   also activate Back, including a momentary touchscreen dropout. */
+static void wait_for_touch_release( void )
+{
+    uint16_t x, y;
+    uint8_t released = 0U;
+    while( released < TOUCH_RELEASE_SAMPLES )
+    {
+        released = waveshare_platform_touch_read( &x, &y ) ? 0U : released + 1U;
+        waveshare_platform_sleep_ms( 5U );
+    }
+}
+
+static void show_seedqr( const MnemonicState *state )
+{
+    char text[ SEEDQR_TEXT_CAPACITY ];
+    uint8_t scratch[ qrcodegen_BUFFER_LEN_FOR_VERSION( 3 ) ];
+    uint8_t qr[ qrcodegen_BUFFER_LEN_FOR_VERSION( 3 ) ];
+    DicerollCanvas canvas = { framebuffer, LCD_WIDTH, LCD_HEIGHT };
+    bool ok = seedqr_encode( state, text, sizeof( text ) ) == 0;
+    if( ok )
+        ok = qrcodegen_encodeText( text, scratch, qr, qrcodegen_Ecc_LOW,
+                                  2, 3, qrcodegen_Mask_AUTO, false );
+
+    graphics_clear( &canvas, BLACK );
+    if( ok )
+    {
+        int size = qrcodegen_getSize( qr );
+        /* Largest whole-pixel scale fitting the height, including the
+           four-module white quiet zone on every side. */
+        int scale = LCD_HEIGHT / ( size + 8 );
+        int extent = ( size + 8 ) * scale;
+        int left = ( LCD_HEIGHT - extent ) / 2;
+        int top = ( LCD_HEIGHT - extent ) / 2;
+        graphics_fill_rect( &canvas, left, top, extent, extent, WHITE );
+        for( int y = 0; y < size; ++y )
+            for( int x = 0; x < size; ++x )
+                if( qrcodegen_getModule( qr, x, y ) )
+                    graphics_fill_rect( &canvas, left + ( x + 4 ) * scale,
+                                        top + ( y + 4 ) * scale, scale, scale, BLACK );
+    }
+    else
+        graphics_text20( &canvas, 30, 220, "SEEDQR UNAVAILABLE", WHITE, BLACK );
+
+    graphics_fill_rect( &canvas, 500, 328, 280, 130, LIGHT_GREY );
+    graphics_text24( &canvas, 606, 380, "BACK", BLACK, LIGHT_GREY );
+
+    /* Clear both the payload and the QR library's temporary secret data.
+       Only the displayed pixels remain until the word screen is redrawn. */
+    volatile char *wipe_text = text;
+    volatile uint8_t *wipe_scratch = scratch;
+    volatile uint8_t *wipe_qr = qr;
+    for( size_t i = 0; i < sizeof( text ); ++i ) wipe_text[ i ] = 0;
+    for( size_t i = 0; i < sizeof( scratch ); ++i ) wipe_scratch[ i ] = 0;
+    for( size_t i = 0; i < sizeof( qr ); ++i ) wipe_qr[ i ] = 0;
+
+    wait_for_touch_release( );
+    while( true )
+    {
+        uint16_t x, y;
+        if( waveshare_platform_touch_read( &x, &y ) &&
+            x >= 500U && x < 780U && y >= 328U && y < 458U )
+        {
+            wait_for_touch_release( );
+            present( state );
+            return;
+        }
+        waveshare_platform_sleep_ms( 5U );
+    }
 }
 
 static uint8_t choose_word_count( void )
@@ -496,6 +586,13 @@ void app_run( void )
             if( touch_y >= DICEROLL_BUTTON_TOP )
             {
                 held_button = diceroll_layout_button_at( touch_x, touch_y );
+                if( DICEROLL_ENABLE_SEEDQR && mnemonic_state_entropy_complete( &state ) &&
+                    ( held_button == DICEROLL_BUTTON_ZERO || held_button == DICEROLL_BUTTON_ONE ) )
+                {
+                    held_button = DICEROLL_BUTTON_NONE;
+                    action_done = true;
+                    show_seedqr( &state );
+                }
                 if( ( held_button == DICEROLL_BUTTON_BACK &&
                           ( mnemonic_state_get_bit_count( &state ) == 0U ||
                             mnemonic_state_entropy_complete( &state ) ) ) ||

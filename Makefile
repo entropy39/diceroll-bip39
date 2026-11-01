@@ -21,6 +21,8 @@ SOURCES := \
 	common/mnemonic_state.c \
 	common/sha256.c \
 	common/ui_model.c \
+	common/seedqr.c \
+	common/vendor/qrcodegen/qrcodegen.c \
 	common/utf8.c \
 	waveshare/src/app/app.c \
 	waveshare/src/ui/graphics.c \
@@ -38,6 +40,8 @@ WEB_SOURCES := \
 	common/mnemonic_state.c \
 	common/sha256.c \
 	common/ui_model.c \
+	common/seedqr.c \
+	common/vendor/qrcodegen/qrcodegen.c \
 	common/utf8.c \
 	waveshare/src/app/app.c \
 	waveshare/src/ui/graphics.c \
@@ -51,6 +55,11 @@ WEB_SOURCES := \
 WEB_CFLAGS := -std=c11 -O2 -Wall -Wextra
 WEB_CFLAGS += -Icommon -Iwaveshare/include -Iwaveshare/vendor/waveshare/fonts
 WEB_CFLAGS += -DDICEROLL_WORDLIST_FILE=\"wordlists/$(LANGUAGE).inc\"
+ifeq ($(LANGUAGE),english)
+CFLAGS += -DDICEROLL_ENABLE_SEEDQR=1
+WEB_CFLAGS += -DDICEROLL_ENABLE_SEEDQR=1
+endif
+
 WEB_LDFLAGS := -sUSE_SDL=2 -sASYNCIFY -sENVIRONMENT=web -sFILESYSTEM=0
 WEB_LDFLAGS += --shell-file web/shell.html
 
